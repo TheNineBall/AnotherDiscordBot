@@ -1,7 +1,9 @@
 import discord
-import cogs.cat
-import cogs.image
 import json
+from cogs.cat import Cat
+from cogs.image import Image
+from cogs.various import Various
+
 
 from discord.ext import commands
 
@@ -16,6 +18,7 @@ bot = commands.Bot(command_prefix='?', description="description")
 async def on_ready():
     print("rdy")
 
-bot.add_cog(cogs.cat.Cat(bot))
-bot.add_cog(cogs.image.Image(bot))
+bot.add_cog(Cat(bot))
+bot.add_cog(Image(bot))
+bot.add_cog(Various(bot))
 bot.run(TOKEN)
