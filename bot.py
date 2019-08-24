@@ -7,12 +7,15 @@ from cogs.various import Various
 
 from discord.ext import commands
 
-with open('auth.json') as jf:
-    data = json.loads(jf.read())
-    TOKEN = data['token']
-    YTAPI = data['key']
 
 bot = commands.Bot(command_prefix='?', description="description")
+
+with open('auth.json') as jf:
+    data = json.loads(jf.read())
+    bot.key_dis = data['discord']
+    bot.key_yt = data['youtube']
+    bot.key_azur = data['azure']
+bot.resources = "resources/"
 
 @bot.event
 async def on_ready():
@@ -21,4 +24,4 @@ async def on_ready():
 bot.add_cog(Cat(bot))
 bot.add_cog(Image(bot))
 bot.add_cog(Various(bot))
-bot.run(TOKEN)
+bot.run(bot.key_dis)
