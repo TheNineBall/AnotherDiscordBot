@@ -3,12 +3,10 @@ import json
 from cogs.cat import Cat
 from cogs.image import Image
 from cogs.various import Various
-
-
 from discord.ext import commands
 
 
-bot = commands.Bot(command_prefix='?', description="description")
+bot = commands.Bot(command_prefix=commands.when_mentioned_or("?"), description="Another random discord bot")
 
 with open('auth.json') as jf:
     data = json.loads(jf.read())

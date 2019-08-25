@@ -8,6 +8,7 @@ class Various(commands.Cog):
 
     @commands.command()
     async def roll(ctx, dice: str = ""):
+        """rolls a ndn dice"""
         try:
             rolls, limit = map(int, dice.split('d'))
         except Exception:

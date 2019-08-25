@@ -9,6 +9,9 @@ from discord.ext import commands
 
 
 class Image(commands.Cog):
+    """Add 'eye' for red eye overlay or 'red','gray','cyan','green','magenta','blue','yellow','black'
+    for color enhancement after a command"""
+
     def __init__(self, bot):
         self.bot = bot
         self.colors = ['red','gray','cyan','green','magenta','blue','yellow','black']
@@ -46,22 +49,22 @@ class Image(commands.Cog):
         img.distort('polar', (-1, 0, img.width / 2, img.height / 2, 0, 0))
         return img.clone()
 
-    def _zoomblur(self, img: wand.image.BaseImage, a:int, e:bool):
-        a = 2 if a >= 2 else a
-        it = int((a-1) * math.hypot(img.width / 2, img.height / 2))
-        w = img.width if not e else math.floor(img.width * a)
-        h = img.height if not e else math.floor(img.height * a)
+    def _zoomblur(self, img: wand.image.BaseImage, zoom: float = 1.2, keep: bool = True):
+        zoom = 2 if zoom >= 2 else zoom
+        it = int((zoom - 1) * math.hypot(img.width / 2, img.height / 2))
+        w = img.width if not keep else math.floor(img.width * zoom)
+        h = img.height if not keep else math.floor(img.height * zoom)
         imga = img.clone()
         for i in range(it):
             n = 1 / (i+2)
             o = 1 - n
-            s = 1 + ((a-1) * (i + 1) / it)
+            s = 1 + ((zoom - 1) * (i + 1) / it)
             imgb = imga.clone()
             imgb.resize(int(imga.width * s), int(imga.height * s))
             imgb.crop(0, 0, width=w, height=h, gravity='center')
             imgb.composite(imga, operator='blend', arguments=str(o) + "x" + str(n), gravity='center')
             imga = imgb.clone()
-        return img.clone()
+        return imga.clone()
 
     def _geteye(self, url):
         face_api_url = 'https://westcentralus.api.cognitive.microsoft.com/face/v1.0/detect'
@@ -106,35 +109,41 @@ class Image(commands.Cog):
         return img
 
     @commands.command()
-    async def radial(self, ctx, url: str, strength: Optional[float] = 10, *args):
+    async def radial(self, ctx, url: str = "", strength: Optional[float] = 10, *args):
+        """image filter: url, strength[optional]"""
         img = self._getimage(url)
         img = self._polarblur(img, strength, None)
         img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
 
     @commands.command()
-    async def angular(self, ctx, url: str, angle: Optional[float] = 30, *args):
+    async def angular(self, ctx, url: str = "", angle: Optional[float] = 30, *args):
+        """image filter: url, angle[optional]"""
         img = self._getimage(url)
         img = self._polarblur(img, None, angle)
         img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
 
     @commands.command()
-    async def polar(self, ctx, url: str, strength: Optional[float] = 10, angle: Optional[int] = 30, *args):
+    async def polar(self, ctx, url: str = "", strength: Optional[float] = 10, angle: Optional[int] = 30, *args):
+        """image filter: url, strength[optional], angle[optional]"""
         img = self._getimage(url)
         img = self._polarblur(img, strength, angle)
         img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
 
     @commands.command()
-    async def zoomblur(self, ctx, url: str, a: int, e: bool, *args):
+    async def zoomblur(self, ctx, url: str = "", zoom: Optional[float] = 1.2, keep: Optional[bool] = True, *args):
+        """image filter: url, zoom[optional], keep size[optional]"""
         img = self._getimage(url)
-        img = self._zoomblur(img, a, e)
+        img = self._zoomblur(img, zoom, keep)
         img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
 
     @commands.command()
-    async def eye(self, ctx, url: str, *args):
+    async def eye(self, ctx, url: str = "", *args):
+        """adds red eyes: url"""
         img = self._getimage(url)
+        args = args + ("eye",)
         img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
