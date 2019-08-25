@@ -11,54 +11,57 @@ from discord.ext import commands
 class Image(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.colors = ['red','gray','cyan','green','magenta','blue','yellow','black']
+        self.gamma = 0.6
+        self.value = 1
 
-    async def _postimage(self,ctx: commands.Context, img: wand.image.BaseImage):
+    async def _postimage(self, ctx: commands.Context, img: wand.image.BaseImage):
         tmp = BytesIO(img.make_blob('jpg'))
         tmp.seek(0)
         await ctx.message.delete()
         await ctx.send(file=discord.File(tmp, str(ctx.message.id) + ".jpg"))
 
     def _getimage(self, url: str):
-        data = requests.get(url, stream=True).raw
-        img = wand.image.Image(file=data)
+        try:
+            data = requests.get(url, stream=True).raw
+            img = wand.image.Image(file=data)
+        except Exception:
+            data = requests.get("https://cataas.com/cat", stream=True).raw
+            img = wand.image.Image(file=data)
         return img
 
-    def _changecolor(self, img: wand.image.BaseImage, value :int = 2, gamma: int = 0.7, channel: str = 'red'):
-        img.evaluate(operator='leftshift', value=value, channel=channel)
-        img.level(gamma=gamma)
+    def _changecolor(self, img: wand.image.BaseImage, channel: Optional[str] = 'red'):
+        img.evaluate(operator='leftshift', value=self.value, channel=channel)
+        img.level(gamma=self.gamma)
         return img
 
-    def _polarblur(self,url: str, strength: Optional[float] = None, angle: Optional[float] = None):
-        data = requests.get(url, stream=True).raw
-        with wand.image.Image(file=data) as img:
-            img.virtual_pixel = 'tile'
-            img.distort('depolar', (-1, 0, img.width / 2, img.height / 2, 0, 0))
-            if strength is not None:
-                img.morphology('convolve', 'blur:0x' + str(strength) + ',90')
-            if angle is not None:
-                img.morphology('convolve', 'blur:0x' + str(360 / img.width * angle / 5))
-            img.background_color = 'black'
-            img.distort('polar', (-1, 0, img.width / 2, img.height / 2, 0, 0))
-            return img.clone()
+    def _polarblur(self, img: wand.image.BaseImage, strength: Optional[float] = None, angle: Optional[float] = None):
+        img.virtual_pixel = 'tile'
+        img.distort('depolar', (-1, 0, img.width / 2, img.height / 2, 0, 0))
+        if strength is not None:
+            img.morphology('convolve', 'blur:0x' + str(strength) + ',90')
+        if angle is not None:
+            img.morphology('convolve', 'blur:0x' + str(360 / img.width * angle / 5))
+        img.background_color = 'black'
+        img.distort('polar', (-1, 0, img.width / 2, img.height / 2, 0, 0))
+        return img.clone()
 
-    def _zoomblur(self, url: str, a:int, e:bool):
+    def _zoomblur(self, img: wand.image.BaseImage, a:int, e:bool):
         a = 2 if a >= 2 else a
-        data = requests.get(url, stream=True).raw
-        with wand.image.Image(file=data) as img:
-            it = int((a-1) * math.hypot(img.width / 2, img.height / 2))
-            w = img.width if not e else math.floor(img.width * a)
-            h = img.height if not e else math.floor(img.height * a)
-            imga = img.clone()
-            for i in range(it):
-                n = 1 / (i+2)
-                o = 1 - n
-                s = 1 + ((a-1) * (i + 1) / it)
-                imgb = imga.clone()
-                imgb.resize(int(imga.width * s), int(imga.height * s))
-                imgb.crop(0, 0, width=w, height=h, gravity='center')
-                imgb.composite(imga, operator='blend', arguments=str(o) + "x" + str(n), gravity='center')
-                imga = imgb.clone()
-            return img.clone()
+        it = int((a-1) * math.hypot(img.width / 2, img.height / 2))
+        w = img.width if not e else math.floor(img.width * a)
+        h = img.height if not e else math.floor(img.height * a)
+        imga = img.clone()
+        for i in range(it):
+            n = 1 / (i+2)
+            o = 1 - n
+            s = 1 + ((a-1) * (i + 1) / it)
+            imgb = imga.clone()
+            imgb.resize(int(imga.width * s), int(imga.height * s))
+            imgb.crop(0, 0, width=w, height=h, gravity='center')
+            imgb.composite(imga, operator='blend', arguments=str(o) + "x" + str(n), gravity='center')
+            imga = imgb.clone()
+        return img.clone()
 
     def _geteye(self, url):
         face_api_url = 'https://westcentralus.api.cognitive.microsoft.com/face/v1.0/detect'
@@ -92,54 +95,46 @@ class Image(commands.Cog):
                 img.composite(eye, left=int(x2), top=int(y2))
             return img.clone()
 
+    def _handleargs(self, img: wand.image.Image, url: str,  args):
+        if "eye" in args:
+            eyes = self._geteye(url)
+            img = self._draweye(img, eyes)
+        for c in self.colors:
+            if c in args:
+                print("colo: " + c)
+                self._changecolor(img, c)
+        return img
 
     @commands.command()
-    async def radial(self, ctx, url: str = "https://cataas.com/cat", strength: float = 10):
-        img = self._polarblur(url, strength, None)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def radialred(self, ctx, url: str = "https://cataas.com/cat", strength: float = 10):
-        img = self._polarblur(url, strength, None)
-        img = self._changecolor(img)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def angular(self, ctx, url: str = "https://cataas.com/cat", angle: float = 30):
-        img = self._polarblur(url, None, angle)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def angularred(self, ctx, url: str = "https://cataas.com/cat", angle: float = 30):
-        img = self._polarblur(url, None, angle)
-        img = self._changecolor(img)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def polar(self, ctx, url: str = "https://cataas.com/cat", strength: float = 10, angle: int = 30):
-        img = self._polarblur(url, strength, angle)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def polarred(self, ctx, url: str = "https://cataas.com/cat", strength: float = 10, angle: int = 30):
-        img = self._polarblur(url, strength, angle)
-        img = self._changecolor(img)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def zoomblur(self, ctx, url:str, a:int, e:bool):
-        img = self._zoomblur(url, a, e)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def zoomblurred(self, ctx, url: str, a: int, e: bool):
-        img = self._zoomblur(url, a, e)
-        img = self._changecolor(img)
-        await self._postimage(ctx, img)
-
-    @commands.command()
-    async def eye(self, ctx, url: str):
-        eyes = self._geteye(url)
+    async def radial(self, ctx, url: str, strength: Optional[float] = 10, *args):
         img = self._getimage(url)
-        img = self._draweye(img, eyes)
+        img = self._polarblur(img, strength, None)
+        img = self._handleargs(img, url, args)
+        await self._postimage(ctx, img)
+
+    @commands.command()
+    async def angular(self, ctx, url: str, angle: Optional[float] = 30, *args):
+        img = self._getimage(url)
+        img = self._polarblur(img, None, angle)
+        img = self._handleargs(img, url, args)
+        await self._postimage(ctx, img)
+
+    @commands.command()
+    async def polar(self, ctx, url: str, strength: Optional[float] = 10, angle: Optional[int] = 30, *args):
+        img = self._getimage(url)
+        img = self._polarblur(img, strength, angle)
+        img = self._handleargs(img, url, args)
+        await self._postimage(ctx, img)
+
+    @commands.command()
+    async def zoomblur(self, ctx, url: str, a: int, e: bool, *args):
+        img = self._getimage(url)
+        img = self._zoomblur(img, a, e)
+        img = self._handleargs(img, url, args)
+        await self._postimage(ctx, img)
+
+    @commands.command()
+    async def eye(self, ctx, url: str, *args):
+        img = self._getimage(url)
+        img = self._handleargs(img, url, args)
         await self._postimage(ctx, img)
