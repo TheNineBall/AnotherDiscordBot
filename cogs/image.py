@@ -68,7 +68,7 @@ class Image(commands.Cog):
 
     def _geteye(self, url):
         face_api_url = 'https://westcentralus.api.cognitive.microsoft.com/face/v1.0/detect'
-        headers = {'Ocp-Apim-Subscription-Key': self.bot.key_azur}
+        headers = {'Ocp-Apim-Subscription-Key': self.bot.key_azure}
         params = {
             'returnFaceId': 'true',
             'returnFaceLandmarks': 'true',
