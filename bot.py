@@ -28,6 +28,10 @@ async def main():
     async def on_ready():
         for g in bot.guilds:
             bot.var[g.id] = {}
+            bot.var[g.id]['vote'] = 0
+            bot.var[g.id]['voted'] = {}
+            bot.var[g.id]['anime'] = {}
+            bot.var[g.id]['anime_msg'] = {}
         print("rdy")
 
     bot.add_cog(Cat(bot))
