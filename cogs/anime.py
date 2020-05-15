@@ -65,9 +65,53 @@ class Anime(commands.Cog):
         self.bot.var[guild]['anime'] = {} #video sources for each show
         self.bot.var[guild]['anime_msg'] = {} #discord message with embeds for each show
 
+    def getep(self, guild):
+        ep = self.bot.var[guild]['gogo-ep']
+        url = self.bot.var[guild]['gogo-url']
+        data = requests.get(url)
+        lx = lxml.html.fromstring(data.content)
+        title = lx.findtext('.//title').replace("at Gogoanime", "") + " - Episode: {}".format(ep)
+        vid = url.replace("/category", "") + "-episode-{}".format(ep)
+        im = CSSSelector("img")
+        img = im(lx.find_class("anime_info_body_bg")[0])[0].get('src').replace(" ", "%20")
+        data = requests.get(vid)
+        sel = CSSSelector("a")
+        sources = sel(lxml.html.fromstring(data.content).find_class("anime_muti_link")[0])
+        if self.bot.var[guild]['gogo-msg'] is None:
+            embed = discord.Embed(title=title, description=url, color=0x5cd65c)
+            embed.set_thumbnail(url=img)  # set_image
+        else:
+            embed = self.bot.var[guild]['gogo-msg'].embeds[0]
+            embed.clear_fields()
+            embed.title = title
+        for it, r in enumerate(sources):
+            embed.add_field(name="stream {}".format(it + 1), value=self.getvid(r.get("data-video")), inline=False)
+        return embed
+
+    @commands.command()
+    async def gogo(self, ctx, url: Optional[str] = None):
+        '''get stream-links from gogoanime url'''
+        try:
+            if url is not None:
+                self.bot.var[ctx.message.guild.id]['gogo-ep'] = 1
+                self.bot.var[ctx.message.guild.id]['gogo-url'] = url
+                self.bot.var[ctx.message.guild.id]['gogo-msg'] = None
+                embed = self.getep(ctx.message.guild.id)
+                msg = await ctx.send(embed=embed)
+                self.bot.var[ctx.message.guild.id]['gogo-msg'] = msg
+            else:
+                self.bot.var[ctx.message.guild.id]['gogo-ep'] += 1
+                msg = self.bot.var[ctx.message.guild.id]['gogo-msg']
+                embed = self.getep(ctx.message.guild.id)
+                await msg.edit(embed=embed)
+        except:
+            ctx.send("Error")
+
+
+    @commands.has_permissions(administrator=True)
     @commands.command()
     async def Ranime(self, ctx, num: Optional[int] = 1, votes: Optional[int] = 0):
-        '''start, arguments: number(ammont of anime), number(ammount of votes)'''
+        '''custom list'''
         if self.bot.var[ctx.message.guild.id]['vote'] > 0:
             await ctx.send("please finish the current vote before starting a new one")
             return
@@ -83,17 +127,19 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def ranime(self, ctx):
-        '''starts a random anime vote with n anime and 5 votes with n being the nubmer of people in the posters voice channel'''
-        if ctx.author.voice != None:
-            l = len(ctx.author.voice.channel.members)
-            await self.Ranime(ctx, l, l)
+        '''starts radnom anime vote depending on people in current voice channel'''
+        if ctx.author.voice == None or self.bot.var[ctx.message.guild.id]['vote'] == 0:
+            return
+        l = len(ctx.author.voice.channel.members)
+        await self.Ranime(ctx, l, l)
 
     @commands.command()
     async def rtanime(self, ctx, time: Optional[int] = 100):
         '''same as ranime, but will end after 100 seconds, or the given time'''
-        if ctx.author.voice != None:
-            l = len(ctx.author.voice.channel.members)
-            await self.Ranime(ctx, l, l)
+        if ctx.author.voice == None or self.bot.var[ctx.message.guild.id]['vote'] == 0:
+            return
+        l = len(ctx.author.voice.channel.members)
+        await self.Ranime(ctx, l, l)
         m = await ctx.send("vote ends in 100 sec")
         await asyncio.sleep(time)
         await self.end(ctx.message)
@@ -102,7 +148,7 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def vote(self, ctx, num: Optional[int] = 0):
-        """vote for a series, argument: number(series id)"""
+        """vote for given id"""
         await self.vote_anime(ctx.message, ctx.message.author.id, num)
 
     @commands.Cog.listener()
@@ -165,7 +211,7 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def reroll(self, ctx, num: Optional[int] = -1):
-        """replace id with a new random series, argument: number(series id)"""
+        """replace given id"""
         if num == -1:
             return;
         await self.roll(ctx.message, num)
@@ -173,7 +219,9 @@ class Anime(commands.Cog):
     @vote.after_invoke
     @endvote.after_invoke
     @ranime.after_invoke
+    @rtanime.after_invoke
     @reroll.after_invoke
     @Ranime.after_invoke
+    @gogo.after_invoke
     async def del_msg(self, ctx):
         await ctx.message.delete()
