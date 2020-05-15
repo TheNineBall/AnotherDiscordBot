@@ -4,7 +4,7 @@ import utility
 import asyncio
 from cogs.cat import Cat
 from cogs.image import Image
-#from cogs.filter import Filter
+from cogs.filter import Filter
 from cogs.various import Various
 from persistence import Persistence
 from discord.ext import commands
@@ -36,7 +36,7 @@ async def main():
 
     bot.add_cog(Cat(bot))
     bot.add_cog(Image(bot))
-    #bot.add_cog(Filter(bot))
+    bot.add_cog(Filter(bot))
     bot.add_cog(Various(bot))
     bot.add_cog(Audio(bot))
     bot.add_cog(Anime(bot))
