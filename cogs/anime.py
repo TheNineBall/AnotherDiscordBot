@@ -7,7 +7,7 @@ from lxml.cssselect import CSSSelector
 import discord
 from collections import Counter
 import random
-
+import json
 
 class Anime(commands.Cog):
     """Generate random Anime links"""
@@ -32,22 +32,21 @@ class Anime(commands.Cog):
             genre = genre + g.text_content()
         im = CSSSelector("img")
         img = im(lx.find_class("anime_info_body_bg")[0])[0].get('src').replace(" ", "%20")
-        vid = url.replace("/category", "") + "-episode-1"
+        # vid = url.replace("/category", "") + "-episode-1"
 
-        embed = discord.Embed(title=title, description=url, color=0x36393f)#eee657
+        embed = discord.Embed(title=title, description=url, color=0x36393f) #eee657
         embed.add_field(name="ID", value=aid, inline=True)
         embed.add_field(name="Votes", value="0", inline=True)
         embed.add_field(name="Genres", value=genre, inline=True)
-        print(img)
         embed.set_thumbnail(url=img) #set_image
         msg = await message.channel.send(embed=embed)
 
         self.bot.var[message.guild.id]['anime_msg'][aid] = msg
-        self.bot.var[message.guild.id]['anime'][aid] = vid
+        self.bot.var[message.guild.id]['anime'][aid] = url #vid
 
     def getvid(self, link):
         if not link.startswith("http"):
-            link = "http:" + link
+            link = "https:" + link
             return link
         return link
 
@@ -84,28 +83,32 @@ class Anime(commands.Cog):
             embed = self.bot.var[guild]['gogo-msg'].embeds[0]
             embed.clear_fields()
             embed.title = title
+            embed.color = 0x5cd65c
         for it, r in enumerate(sources):
             embed.add_field(name="stream {}".format(it + 1), value=self.getvid(r.get("data-video")), inline=False)
         return embed
 
-    @commands.command()
-    async def gogo(self, ctx, url: Optional[str] = None):
-        '''get stream-links from gogoanime url'''
+    async def gogoepisodes(self, message, url, ep):
         try:
             if url is not None:
-                self.bot.var[ctx.message.guild.id]['gogo-ep'] = 1
-                self.bot.var[ctx.message.guild.id]['gogo-url'] = url
-                self.bot.var[ctx.message.guild.id]['gogo-msg'] = None
-                embed = self.getep(ctx.message.guild.id)
-                msg = await ctx.send(embed=embed)
-                self.bot.var[ctx.message.guild.id]['gogo-msg'] = msg
+                self.bot.var[message.guild.id]['gogo-ep'] = ep
+                self.bot.var[message.guild.id]['gogo-url'] = url
+                self.bot.var[message.guild.id]['gogo-msg'] = None
+                embed = self.getep(message.guild.id)
+                msg = await message.channel.send(embed=embed)
+                self.bot.var[message.guild.id]['gogo-msg'] = msg
             else:
-                self.bot.var[ctx.message.guild.id]['gogo-ep'] += 1
-                msg = self.bot.var[ctx.message.guild.id]['gogo-msg']
-                embed = self.getep(ctx.message.guild.id)
+                self.bot.var[message.guild.id]['gogo-ep'] += ep
+                msg = self.bot.var[message.guild.id]['gogo-msg']
+                embed = self.getep(message.guild.id)
                 await msg.edit(embed=embed)
         except:
-            ctx.send("Error")
+            await message.channel.send("Error")
+
+    @commands.command()
+    async def next(self, ctx, ep: Optional[int] = 1, url: Optional[str] = None):
+        '''get stream-links from gogoanime url'''
+        await self.gogoepisodes(ctx.message, url, ep)
 
 
     @commands.has_permissions(administrator=True)
@@ -134,15 +137,17 @@ class Anime(commands.Cog):
         await self.Ranime(ctx, l, l)
 
     @commands.command()
-    async def rtanime(self, ctx, time: Optional[int] = 100):
+    async def rtanime(self, ctx, time: Optional[int] = 10):
         '''same as ranime, but will end after 100 seconds, or the given time'''
         if ctx.author.voice == None or self.bot.var[ctx.message.guild.id]['vote'] == 0:
             return
         l = len(ctx.author.voice.channel.members)
         await self.Ranime(ctx, l, l)
-        m = await ctx.send("vote ends in 100 sec")
+        dic = json.dumps(self.bot.var[ctx.message.guild.id]['anime'], sort_keys=True)
+        m = await ctx.send("vote ends in {} sec".format(time))
         await asyncio.sleep(time)
-        await self.end(ctx.message)
+        if dic == json.dumps(self.bot.var[ctx.message.guild.id]['anime'], sort_keys=True):
+            await self.end(ctx.message)
         await m.delete()
 
 
@@ -162,6 +167,7 @@ class Anime(commands.Cog):
         num = num[0]
         if reaction.emoji == "👎":
             await self.roll(reaction.message, num)
+            return
         await self.vote_anime(reaction.message, user.id, num)
 
     async def vote_anime(self, message, author, num):
@@ -183,18 +189,10 @@ class Anime(commands.Cog):
             aid = list(Counter(self.bot.var[guild]['voted'].values()))[0]
         else:
             aid = random.choice(list(self.bot.var[guild]['anime'].keys()))
-        embed = self.bot.var[guild]['anime_msg'][aid].embeds[0]
-        embed.colour = 0x5cd65c
-        embed.clear_fields()
-
-        link = self.bot.var[guild]['anime'][aid]
-        data = requests.get(link)
-        sel = CSSSelector("a")
-        sources = sel(lxml.html.fromstring(data.content).find_class("anime_muti_link")[0])
-        for it, r in enumerate(sources):
-            embed.add_field(name="stream {}".format(it + 1), value=self.getvid(r.get("data-video")), inline=False)
-
-        await message.channel.send(embed=embed)
+        self.bot.var[message.guild.id]['gogo-ep'] = 0
+        self.bot.var[message.guild.id]['gogo-url'] = self.bot.var[guild]['anime'][aid]
+        self.bot.var[message.guild.id]['gogo-msg'] = self.bot.var[guild]['anime_msg'][aid]
+        await self.gogoepisodes(message, None, 1)
         self.reset(guild)
 
     async def roll(self, message, num):
@@ -222,6 +220,6 @@ class Anime(commands.Cog):
     @rtanime.after_invoke
     @reroll.after_invoke
     @Ranime.after_invoke
-    @gogo.after_invoke
+    @next.after_invoke
     async def del_msg(self, ctx):
         await ctx.message.delete()
