@@ -88,25 +88,28 @@ class Anime(commands.Cog):
             embed.add_field(name="stream {}".format(it + 1), value=self.getvid(r.get("data-video")), inline=False)
         return embed
 
+    #change message for guild id
     async def gogoepisodes(self, message, url, ep):
-        try:
-            if url is not None:
-                self.bot.var[message.guild.id]['gogo-ep'] = ep
-                self.bot.var[message.guild.id]['gogo-url'] = url
-                self.bot.var[message.guild.id]['gogo-msg'] = None
-                embed = self.getep(message.guild.id)
-                msg = await message.channel.send(embed=embed)
-                self.bot.var[message.guild.id]['gogo-msg'] = msg
-            else:
-                self.bot.var[message.guild.id]['gogo-ep'] += ep
-                msg = self.bot.var[message.guild.id]['gogo-msg']
-                embed = self.getep(message.guild.id)
-                await msg.edit(embed=embed)
-        except:
-            await message.channel.send("Error")
+        #try:
+        if url is not None:
+            self.bot.var[message.guild.id]['gogo-ep'] = ep
+            self.bot.var[message.guild.id]['gogo-url'] = url
+            self.bot.var[message.guild.id]['gogo-msg'] = None
+            embed = self.getep(message.guild.id)
+            msg = await message.channel.send(embed=embed)
+            self.bot.var[message.guild.id]['gogo-msg'] = msg
+            await self.bot.react.add(msg, '➖', self.gogoepisodes, (msg, None, -1))
+            await self.bot.react.add(msg, '➕', self.gogoepisodes, (msg, None, 1))
+        else:
+            self.bot.var[message.guild.id]['gogo-ep'] += ep
+            msg = self.bot.var[message.guild.id]['gogo-msg']
+            embed = self.getep(message.guild.id)
+            await msg.edit(embed=embed)
+        #except:
+            #await message.channel.send("Error")
 
     @commands.command()
-    async def next(self, ctx, ep: Optional[int] = 1, url: Optional[str] = None):
+    async def anime(self, ctx, ep: Optional[int] = 1, url: Optional[str] = None):
         '''get stream-links from gogoanime url'''
         await self.gogoepisodes(ctx.message, url, ep)
 
@@ -220,6 +223,6 @@ class Anime(commands.Cog):
     @rtanime.after_invoke
     @reroll.after_invoke
     @Ranime.after_invoke
-    @next.after_invoke
+    @anime.after_invoke
     async def del_msg(self, ctx):
         await ctx.message.delete()

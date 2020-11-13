@@ -2,6 +2,7 @@ import discord
 import json
 import utility
 import asyncio
+from dependencies.react import React
 from cogs.cat import Cat
 from cogs.image import Image
 from cogs.filter import Filter
@@ -23,6 +24,7 @@ async def main():
     bot.get_images = utility.get_images
     bot.db = Persistence()
     bot.var = {}
+    bot.react = React()
 
     @bot.event
     async def on_reminder(channel_id, author_id, text):
@@ -30,14 +32,24 @@ async def main():
         await channel.send("<@{0}>, remember: {1}".format(author_id, text))
 
     @bot.event
+    async def on_reaction_add(reaction, user):
+        if user.bot:
+            return
+        if await bot.react.check(reaction):
+            await reaction.remove(user)
+
+    @bot.event
     async def on_ready():
         for g in bot.guilds:
             if not g.id in bot.var:
                 bot.var[g.id] = {}
+                #anime
                 bot.var[g.id]['vote'] = 0
                 bot.var[g.id]['voted'] = {}
                 bot.var[g.id]['anime'] = {}
                 bot.var[g.id]['anime_msg'] = {}
+                #music
+                bot.var[g.id]['playlist'] = {}
         print("rdy")
 
     bot.add_cog(Cat(bot))
