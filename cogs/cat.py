@@ -26,11 +26,11 @@ class Cat(commands.Cog):
     async def catsay(self, ctx, text: str = "", color: str = ""):
         """returns a cat with: text, textcolor"""
         await ctx.message.delete()
-        cat = "https://cataas.com/c/s/" + (text + ("&c=" + color) if color != "" else "") if text != "" else ""
+        cat = "https://cataas.com/c/s/" + (text + '?s=50' + ("&c=" + color) if color != "" else "") if text != "" else ""
         await ctx.send(cat)
 
     @commands.command()
-    async def catfilter(ctx, msg: str = ""):
+    async def catfilter(self, ctx, msg: str = ""):
         """add one of 'blur', 'mono', 'sepia', 'negative', 'paint', 'pixel'"""
         filter = ['blur', 'mono', 'sepia', 'negative', 'paint', 'pixel']
         if msg in filter:
