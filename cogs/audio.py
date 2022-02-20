@@ -53,7 +53,7 @@ class Audio(commands.Cog):
                 if not voice.is_connected():
                     break
 
-    async def cog_after_invoke(self, ctx):
+    async def cog_before_invoke(self, ctx):
        await ctx.message.delete()
 
     async def uconnect(self, ctx):

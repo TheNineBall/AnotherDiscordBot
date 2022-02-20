@@ -20,6 +20,7 @@ async def on_reminder(channel_id, author_id, text):
     channel = bot.get_channel(channel_id)
     await channel.send("<@{0}>, remember: {1}".format(author_id, text))
 
+
 @bot.event
 async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id or payload.message_id in bot.react.reacts:
@@ -27,6 +28,7 @@ async def on_raw_reaction_add(payload):
     for c in bot.cogs:
         if (r_handler := getattr(bot.cogs[c], "handle_reactions", None)) is not None:
             await r_handler(payload)
+
 
 @bot.event
 async def on_reaction_add(reaction, user):
@@ -38,11 +40,13 @@ async def on_reaction_add(reaction, user):
         except discord.NotFound:
             pass
 
+
 @bot.event
 async def on_guild_join(guild):
     for c in bot.cogs:
         if (setup := getattr(bot.cogs[c], "setup", None)) is not None:
             setup(guild)
+
 
 @bot.event
 async def on_ready():
@@ -70,7 +74,7 @@ bot.config = config
 
 bot.add_cog(Cat(bot))
 bot.add_cog(Image(bot))
-#bot.add_cog(Various(bot))
+bot.add_cog(Various(bot))
 bot.add_cog(Audio(bot))
 bot.add_cog(Anime(bot))
 #bot.add_cog(Timer(bot))

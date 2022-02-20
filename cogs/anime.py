@@ -56,14 +56,14 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def anime(self, ctx, ep: Optional[int] = 1, url: Optional[str] = None):
-        '''get stream-links from an url'''
+        """get stream-links from an url"""
         await self.get_episode(ctx.message, url, ep)
 
 
     @commands.has_permissions(administrator=True)
     @commands.command()
     async def Ranime(self, ctx, num: Optional[int] = 1, votes: Optional[int] = 0):
-        '''custom amount of anime and votes'''
+        """custom amount of anime and votes"""
         if self.bot.var[ctx.message.guild.id]['anime'].vote > 0:
             await ctx.send("please finish the current vote before starting a new one")
             return
@@ -79,7 +79,7 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def ranime(self, ctx):
-        '''starts random anime vote depending on people in current voice channel'''
+        """starts random anime vote depending on people in current voice channel"""
         if ctx.author.voice == None or self.bot.var[ctx.message.guild.id]['anime'].vote == 0:
             return
         l = len(ctx.author.voice.channel.members)
@@ -87,7 +87,7 @@ class Anime(commands.Cog):
 
     @commands.command()
     async def rtanime(self, ctx, time: Optional[int] = 10):
-        '''same as ranime, but will end after 100 seconds, or the given time'''
+        """same as ranime, but will end after 100 seconds, or the given time"""
         if ctx.author.voice == None or self.bot.var[ctx.message.guild.id]['anime'].vote == 0:
             return
         l = len(ctx.author.voice.channel.members)
