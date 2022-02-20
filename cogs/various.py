@@ -7,12 +7,9 @@ class Various(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def roll(ctx, dice: str = ""):
-        """rolls a ndn dice"""
-        try:
-            rolls, limit = map(int, dice.split('d'))
-        except Exception:
-            await ctx.send('Format has to be in NdN!')
-            return
-        result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
-        await ctx.send(result)
+    async def say(self, ctx, text: str = ""):
+        """say text"""
+        await ctx.send(text)
+
+    async def cog_after_invoke(self, ctx):
+        await ctx.message.delete()
